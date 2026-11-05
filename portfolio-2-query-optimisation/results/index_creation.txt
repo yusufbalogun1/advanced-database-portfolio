@@ -1,0 +1,38 @@
+SET
+Timing is on.
+CREATE INDEX
+Time: 439.902 ms
+CREATE INDEX
+Time: 49.782 ms
+CREATE INDEX
+Time: 81.608 ms
+CREATE INDEX
+Time: 90.959 ms
+CREATE INDEX
+Time: 41.249 ms
+VACUUM
+Time: 103.833 ms
+VACUUM
+Time: 60.071 ms
+VACUUM
+Time: 106.368 ms
+Timing is off.
+== Index sizes (shows BRIN vs B-tree storage cost) ==
+        index_name        |  table_name  | index_size 
+--------------------------+--------------+------------
+ idx_ledger_wallet_posted | ledger_entry | 27 MB
+ txn_pkey                 | txn          | 12 MB
+ idx_txn_cashout_cover    | txn          | 2784 kB
+ idx_txn_exceptions       | txn          | 784 kB
+ idx_customer_name_ci     | customer     | 368 kB
+ brin_txn_created         | txn          | 24 kB
+(6 rows)
+
+== Table sizes for comparison ==
+   relname    | table_size |  rows  
+--------------+------------+--------
+ customer     | 4992 kB    |  50010
+ txn          | 70 MB      | 551022
+ ledger_entry | 71 MB      | 888207
+(3 rows)
+

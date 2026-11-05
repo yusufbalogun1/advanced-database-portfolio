@@ -1,0 +1,155 @@
+##### OPTIMISED - with Portfolio 2 indexes #####
+SET
+SET
+================ Q1: Mini-statement (last 10 movements for one wallet) ================
+                                                                    QUERY PLAN                                                                     
+---------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.42..21.23 rows=10 width=24) (actual time=0.008..0.009 rows=10 loops=1)
+   Buffers: shared hit=4
+   ->  Index Scan using idx_ledger_wallet_posted on ledger_entry l  (cost=0.42..42.02 rows=20 width=24) (actual time=0.007..0.008 rows=10 loops=1)
+         Index Cond: (wallet_id = 20000)
+         Buffers: shared hit=4
+ Planning Time: 0.028 ms
+ Execution Time: 0.016 ms
+(7 rows)
+
+================ Q2: Case-insensitive customer search by name ================
+                                                          QUERY PLAN                                                           
+-------------------------------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on customer  (cost=4.80..160.61 rows=50 width=32) (actual time=0.012..0.032 rows=54 loops=1)
+   Recheck Cond: ((lower((last_name)::text) = 'balogun'::text) AND (lower((first_name)::text) = 'yusuf'::text))
+   Heap Blocks: exact=52
+   Buffers: shared hit=54
+   ->  Bitmap Index Scan on idx_customer_name_ci  (cost=0.00..4.79 rows=50 width=0) (actual time=0.007..0.007 rows=54 loops=1)
+         Index Cond: ((lower((last_name)::text) = 'balogun'::text) AND (lower((first_name)::text) = 'yusuf'::text))
+         Buffers: shared hit=2
+ Planning Time: 0.025 ms
+ Execution Time: 0.039 ms
+(9 rows)
+
+================ Q3: October 2026 channel report (successful txns) ================
+                                                                              QUERY PLAN                                                                              
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ HashAggregate  (cost=10310.09..10310.29 rows=16 width=50) (actual time=12.651..12.653 rows=10 loops=1)
+   Group Key: channel, txn_type
+   Batches: 1  Memory Usage: 24kB
+   Buffers: shared hit=855
+   ->  Bitmap Heap Scan on txn  (cost=23.39..9862.59 rows=44750 width=16) (actual time=0.039..6.104 rows=46210 loops=1)
+         Recheck Cond: ((created_at >= '2026-10-01 00:00:00+00'::timestamp with time zone) AND (created_at < '2026-11-01 00:00:00+00'::timestamp with time zone))
+         Rows Removed by Index Recheck: 2324
+         Filter: ((status)::text = 'SUCCESS'::text)
+         Rows Removed by Filter: 3412
+         Heap Blocks: lossy=853
+         Buffers: shared hit=855
+         ->  Bitmap Index Scan on brin_txn_created  (cost=0.00..12.20 rows=49040 width=0) (actual time=0.037..0.037 rows=8530 loops=1)
+               Index Cond: ((created_at >= '2026-10-01 00:00:00+00'::timestamp with time zone) AND (created_at < '2026-11-01 00:00:00+00'::timestamp with time zone))
+               Buffers: shared hit=2
+ Planning:
+   Buffers: shared hit=12
+ Planning Time: 0.049 ms
+ Execution Time: 12.669 ms
+(18 rows)
+
+================ Q4: Top 10 agents by cash-out value, last 30 days ================
+                                                                                QUERY PLAN                                                                                 
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=1191.50..1191.53 rows=10 width=58) (actual time=3.207..3.209 rows=10 loops=1)
+   Buffers: shared hit=1062
+   ->  Sort  (cost=1191.50..1194.01 rows=1003 width=58) (actual time=3.207..3.208 rows=10 loops=1)
+         Sort Key: (sum(t.amount)) DESC
+         Sort Method: top-N heapsort  Memory: 26kB
+         Buffers: shared hit=1062
+         ->  HashAggregate  (cost=1157.29..1169.83 rows=1003 width=58) (actual time=2.961..3.095 rows=999 loops=1)
+               Group Key: a.agent_code, a.city
+               Batches: 1  Memory Usage: 577kB
+               Buffers: shared hit=1062
+               ->  Hash Join  (cost=802.87..1098.90 rows=5839 width=24) (actual time=0.601..1.711 rows=6710 loops=1)
+                     Hash Cond: (t.dest_wallet_id = w.wallet_id)
+                     Buffers: shared hit=1062
+                     ->  Index Only Scan using idx_txn_cashout_cover on txn t  (cost=0.42..226.60 rows=5839 width=14) (actual time=0.004..0.405 rows=6710 loops=1)
+                           Index Cond: (created_at >= ('2026-10-31 23:00:00+00'::timestamp with time zone - '30 days'::interval))
+                           Heap Fetches: 1
+                           Buffers: shared hit=38
+                     ->  Hash  (cost=164.79..164.79 rows=51013 width=26) (actual time=0.544..0.545 rows=1003 loops=1)
+                           Buckets: 65536  Batches: 1  Memory Usage: 570kB
+                           Buffers: shared hit=1024
+                           ->  Merge Join  (cost=0.62..164.79 rows=51013 width=26) (actual time=0.008..0.435 rows=1003 loops=1)
+                                 Merge Cond: (w.agent_id = a.agent_id)
+                                 Buffers: shared hit=1024
+                                 ->  Index Scan using uq_agent_currency on wallet w  (cost=0.29..4931.04 rows=51013 width=16) (actual time=0.003..0.192 rows=1004 loops=1)
+                                       Buffers: shared hit=1007
+                                 ->  Index Scan using agent_pkey on agent a  (cost=0.28..51.32 rows=1003 width=26) (actual time=0.003..0.073 rows=1003 loops=1)
+                                       Buffers: shared hit=17
+ Planning:
+   Buffers: shared hit=23
+ Planning Time: 0.145 ms
+ Execution Time: 3.231 ms
+(31 rows)
+
+================ Q5: Ops monitor - failed/pending txns in the last 7 days ================
+                                                            QUERY PLAN                                                             
+-----------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.29..3.06 rows=50 width=52) (actual time=0.005..0.016 rows=50 loops=1)
+   Buffers: shared hit=15
+   ->  Index Scan using idx_txn_exceptions on txn  (cost=0.29..34.84 rows=624 width=52) (actual time=0.005..0.014 rows=50 loops=1)
+         Index Cond: (created_at >= ('2026-10-31 23:00:00+00'::timestamp with time zone - '7 days'::interval))
+         Buffers: shared hit=15
+ Planning:
+   Buffers: shared hit=1
+ Planning Time: 0.029 ms
+ Execution Time: 0.021 ms
+(9 rows)
+
+================ Q6a: Dormant wallets - ORIGINAL (NOT IN) - estimated plan only ================
+(EXPLAIN without ANALYZE: running it takes ~2 minutes. See 06_rewrite_demo.sql for the timed run.)
+                                                       QUERY PLAN                                                       
+------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=217509553.07..217509553.08 rows=1 width=8)
+   ->  Index Scan using uq_customer_currency on wallet w  (cost=39279.80..217509490.57 rows=24999 width=0)
+         Index Cond: (customer_id IS NOT NULL)
+         Filter: (NOT (SubPlan 1))
+         SubPlan 1
+           ->  Materialize  (cost=39279.51..47234.16 rows=297716 width=8)
+                 ->  HashAggregate  (cost=39279.51..44582.58 rows=297716 width=8)
+                       Group Key: txn.source_wallet_id
+                       Planned Partitions: 4
+                       ->  Append  (cost=49.82..23277.28 rows=297716 width=8)
+                             ->  Bitmap Heap Scan on txn  (cost=49.82..10894.35 rows=148858 width=8)
+                                   Recheck Cond: (created_at >= '2026-08-01 00:00:00+00'::timestamp with time zone)
+                                   ->  Bitmap Index Scan on brin_txn_created  (cost=0.00..12.61 rows=149082 width=0)
+                                         Index Cond: (created_at >= '2026-08-01 00:00:00+00'::timestamp with time zone)
+                             ->  Bitmap Heap Scan on txn txn_1  (cost=49.82..10894.35 rows=148858 width=8)
+                                   Recheck Cond: (created_at >= '2026-08-01 00:00:00+00'::timestamp with time zone)
+                                   ->  Bitmap Index Scan on brin_txn_created  (cost=0.00..12.61 rows=149082 width=0)
+                                         Index Cond: (created_at >= '2026-08-01 00:00:00+00'::timestamp with time zone)
+ JIT:
+   Functions: 18
+   Options: Inlining true, Optimization true, Expressions true, Deforming true
+(21 rows)
+
+================ Q6b: Dormant wallets - REWRITTEN (NOT EXISTS on ledger) ================
+                                                            QUERY PLAN                                                             
+-----------------------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=25299.65..25299.66 rows=1 width=8) (actual time=131.775..131.776 rows=1 loops=1)
+   Buffers: shared hit=6961 read=3098
+   ->  Hash Right Anti Join  (cost=2089.11..25278.73 rows=8365 width=0) (actual time=131.219..131.750 rows=662 loops=1)
+         Hash Cond: (l.wallet_id = w.wallet_id)
+         Buffers: shared hit=6961 read=3098
+         ->  Seq Scan on ledger_entry l  (cost=0.00..20207.59 rows=250830 width=8) (actual time=0.046..96.895 rows=252434 loops=1)
+               Filter: (posted_at >= '2026-08-01 00:00:00+00'::timestamp with time zone)
+               Rows Removed by Filter: 635773
+               Buffers: shared hit=6007 read=3098
+         ->  Hash  (cost=1464.13..1464.13 rows=49998 width=8) (actual time=15.793..15.794 rows=50010 loops=1)
+               Buckets: 65536  Batches: 1  Memory Usage: 2466kB
+               Buffers: shared hit=954
+               ->  Seq Scan on wallet w  (cost=0.00..1464.13 rows=49998 width=8) (actual time=0.005..10.254 rows=50010 loops=1)
+                     Filter: (customer_id IS NOT NULL)
+                     Rows Removed by Filter: 1003
+                     Buffers: shared hit=954
+ Planning:
+   Buffers: shared hit=13 read=4
+ Planning Time: 0.193 ms
+ Execution Time: 131.955 ms
+(20 rows)
+
+RESET

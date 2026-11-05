@@ -1,0 +1,105 @@
+SET
+Timing is on.
+== Q1: Mini-statement - last 10 movements for wallet 20000 (customer app) ==
+          posted_at          | direction | amount  | balance_after 
+-----------------------------+-----------+---------+---------------
+ 2026-08-28 00:31:36.312+00  | D         | 6177.62 |     461129.95
+ 2026-08-23 22:06:48.2736+00 | D         | 7669.90 |     467307.57
+ 2026-08-09 12:16:04.2288+00 | D         | 8124.64 |     474977.47
+ 2026-08-07 22:01:38.616+00  | D         | 6659.92 |     483102.11
+ 2026-07-09 12:38:15.1344+00 | D         | 3529.93 |     489762.03
+ 2026-06-06 06:41:26.5968+00 | D         | 9866.66 |     493291.96
+ 2026-06-01 09:36:23.5056+00 | C         | 5828.50 |     503158.62
+ 2026-05-12 19:19:38.2704+00 | D         | 9467.92 |     497330.12
+ 2026-03-26 19:25:21.1056+00 | C         | 9864.58 |     506798.04
+ 2026-03-09 01:39:37.848+00  | C         | 6907.69 |     496933.46
+(10 rows)
+
+Time: 50.194 ms
+== Q2: Support search - customers named Yusuf Balogun (case-insensitive) ==
+ customer_id |    msisdn     | first_name | last_name 
+-------------+---------------+------------+-----------
+         433 | 2349000000419 | Yusuf      | Balogun
+        2685 | 2349000002671 | Yusuf      | Balogun
+        2854 | 2349000002840 | Yusuf      | Balogun
+        2927 | 2349000002913 | Yusuf      | Balogun
+        3671 | 2349000003657 | Yusuf      | Balogun
+        4457 | 2349000004443 | Yusuf      | Balogun
+        4585 | 2349000004571 | Yusuf      | Balogun
+        4837 | 2349000004823 | Yusuf      | Balogun
+        4986 | 2349000004972 | Yusuf      | Balogun
+        5059 | 2349000005045 | Yusuf      | Balogun
+(10 rows)
+
+Time: 15.708 ms
+== Q3: Finance - October 2026 volume by channel and type (successful only) ==
+ channel | txn_type | txn_count | total_value 
+---------+----------+-----------+-------------
+ AGENT   | CASH_IN  |      4542 | 23196887.40
+ AGENT   | CASH_OUT |      6939 | 35190681.92
+ API     | BILL_PAY |       895 |  4529414.36
+ API     | CASH_IN  |         3 |  3550000.00
+ API     | P2P      |      2558 | 12935294.81
+ API     | REVERSAL |         1 |     3000.00
+ APP     | BILL_PAY |      4244 | 21687453.33
+ APP     | P2P      |     11402 | 57257414.21
+ USSD    | BILL_PAY |      4116 | 20690668.49
+ USSD    | P2P      |     11510 | 58326649.18
+(10 rows)
+
+Time: 37.440 ms
+== Q4: Agent management - top 10 agents by cash-out value, last 30 days ==
+ agent_code |     city      | cash_outs |  value   
+------------+---------------+-----------+----------
+ GH-AG-0810 | Accra         |        14 | 91349.76
+ GH-AG-0837 | Accra         |        15 | 83534.25
+ NG-AG-0647 | Kano          |        13 | 81255.10
+ NG-AG-0090 | Abuja         |        15 | 80308.01
+ NG-AG-0679 | Kano          |        13 | 78316.77
+ UG-AG-0959 | Mbarara       |        13 | 78076.00
+ NG-AG-0291 | Ibadan        |        15 | 77474.13
+ NG-AG-0195 | Ibadan        |        12 | 72778.45
+ GH-AG-0877 | Accra         |        12 | 72652.81
+ NG-AG-0302 | Port Harcourt |        10 | 72603.72
+(10 rows)
+
+Time: 27.212 ms
+== Q5: Operations - latest failed/pending transactions, last 7 days ==
+ txn_id | txn_type | amount  | status  |    failure_reason    |         created_at          
+--------+----------+---------+---------+----------------------+-----------------------------
+ 551026 | CASH_OUT | 7913.63 | FAILED  | Daily limit exceeded | 2026-10-30 22:58:15.6288+00
+ 551005 | P2P      |  523.67 | FAILED  | Network timeout      | 2026-10-30 22:39:59.7312+00
+ 550997 | CASH_OUT | 9848.22 | PENDING |                      | 2026-10-30 22:33:02.2464+00
+ 550977 | CASH_OUT | 7522.92 | FAILED  | Network timeout      | 2026-10-30 22:15:38.5344+00
+ 550961 | P2P      | 6669.44 | PENDING |                      | 2026-10-30 22:01:43.5648+00
+ 550919 | P2P      | 9693.82 | FAILED  | Daily limit exceeded | 2026-10-30 21:25:11.7696+00
+ 550880 | P2P      | 7275.84 | PENDING |                      | 2026-10-30 20:51:16.5312+00
+ 550843 | P2P      | 2949.16 | FAILED  | Network timeout      | 2026-10-30 20:19:05.664+00
+ 550838 | P2P      | 2648.92 | FAILED  | Wrong PIN            | 2026-10-30 20:14:44.736+00
+ 550815 | P2P      | 3947.81 | PENDING |                      | 2026-10-30 19:54:44.4672+00
+ 550778 | BILL_PAY | 3483.73 | FAILED  | Insufficient funds   | 2026-10-30 19:22:33.6+00
+ 550770 | CASH_OUT | 9132.59 | FAILED  | Wrong PIN            | 2026-10-30 19:15:36.1152+00
+ 550764 | P2P      |  423.35 | FAILED  | Wrong PIN            | 2026-10-30 19:10:23.0016+00
+ 550763 | BILL_PAY |  736.03 | FAILED  | Daily limit exceeded | 2026-10-30 19:09:30.816+00
+ 550719 | BILL_PAY | 1022.65 | FAILED  | Network timeout      | 2026-10-30 18:31:14.6496+00
+(15 rows)
+
+Time: 26.345 ms
+== Q5b: Failure reasons breakdown, last 7 days ==
+     failure_reason      | count 
+-------------------------+-------
+ Wrong PIN               |   109
+ Network timeout         |   105
+ Daily limit exceeded    |   100
+ Recipient wallet frozen |    93
+ Insufficient funds      |    84
+(5 rows)
+
+Time: 25.872 ms
+== Q6: Marketing - number of dormant customer wallets (no activity since 1 Aug 2026) ==
+ dormant_wallets 
+-----------------
+             662
+(1 row)
+
+Time: 60.374 ms

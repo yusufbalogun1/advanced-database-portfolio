@@ -1,0 +1,50 @@
+SET
+SET
+Timing is on.
+== Why NOT IN is dangerous: one NULL in the list makes every comparison UNKNOWN ==
+         test         | rows_returned 
+----------------------+---------------
+ with NULL in list    |             0
+ without NULL in list |             1
+(2 rows)
+
+Time: 1.220 ms
+== How many NULLs does the subquery produce? (BILL_PAY and float CASH_IN have a NULL side) ==
+ null_dest | null_source 
+-----------+-------------
+     30031 |           3
+(1 row)
+
+Time: 47.764 ms
+== Q6a ORIGINAL: NOT IN (slow AND wrong) ==
+ dormant_wallets 
+-----------------
+               0
+(1 row)
+
+Time: 21450.935 ms (00:21.451)
+== Q6b REWRITTEN: NOT EXISTS against the ledger (fast AND correct) ==
+ dormant_wallets 
+-----------------
+             662
+(1 row)
+
+Time: 93.941 ms
+== Q6b sample output: 10 dormant wallets with owner and last activity ==
+ wallet_id |    customer    |    msisdn     |  balance  |        last_activity        
+-----------+----------------+---------------+-----------+-----------------------------
+        10 | Grace Namutebi | 256772110010  |      0.00 | 
+         7 | Ngozi Eze      | 2348031110007 |      0.00 | 
+     16716 | Aisha Balogun  | 2349000016700 | 508084.73 | 2026-03-16 12:53:20.6064+00
+      3019 | Halima Balogun | 2349000003003 | 503361.88 | 2026-03-20 10:19:48.984+00
+     29345 | Bayo Oyelaran  | 2349000029329 | 491465.89 | 2026-03-22 04:09:56.6256+00
+      3762 | Emeka Oyelaran | 2349000003746 | 513165.14 | 2026-04-04 05:47:12.0816+00
+     44872 | Yaw Boateng    | 233500044856  | 470991.48 | 2026-04-11 21:43:35.16+00
+     34619 | Ngozi Nwosu    | 2349000034603 | 489398.48 | 2026-04-13 19:27:40.728+00
+     33114 | Tunde Eze      | 2349000033098 | 496269.65 | 2026-04-17 07:25:19.7232+00
+     40415 | Kofi Addo      | 233500040399  | 484620.13 | 2026-04-18 01:26:26.424+00
+(10 rows)
+
+Time: 70.497 ms
+RESET
+Time: 0.081 ms
