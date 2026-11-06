@@ -47,16 +47,16 @@ Script: [`02_stress_test.sh`](02_stress_test.sh) uses **pgbench** to run **20 co
 | | Naive read-modify-write | Safe `p2p_transfer()` |
 |---|---|---|
 | Approach | App reads balance, computes new value, writes it back. No locks | One call: lock rows, re-read, update, ledger |
-| Transfers processed | 1,000 / 1,000 (no errors reported) | 1,000 / 1,000 |
-| Ada final balance (expected 900,000) | ⟨fill⟩ | 900,000.00 ✔ |
-| Bola final balance (expected 1,100,000) | ⟨fill⟩ | 1,100,000.00 ✔ |
-| Money created / lost | ⟨fill⟩ | 0.00 ✔ |
-| Ledger reconciliation | Mismatch on both wallets | 0 rows ✔ |
-| Throughput | ⟨fill⟩ tps | ⟨fill⟩ tps |
+| Transfers processed | 1,000 / 1,000, **0 failed** | 1,000 / 1,000, 0 failed |
+| Ada final balance (expected 900,000) | 994,300.00 ✘ (only 57 of 1,000 debits survived) | 900,000.00 ✔ |
+| Bola final balance (expected 1,100,000) | 1,006,500.00 ✘ (only 65 of 1,000 credits survived) | 1,100,000.00 ✔ |
+| Money created / lost | **+NGN 800.00 created from nothing** ✘ | 0.00 ✔ |
+| Transfer records / ledger | 0 txn rows; cached balances no longer match the ledger | 1,000 txn rows; reconciliation 0 rows ✔ |
+| Throughput | 3,782 tps (5.3 ms avg latency) | 1,385 tps (14.4 ms avg latency) |
 
-**Analysis.** In the naive version, two clients read the same balance (say 999,900), both subtract 100, and both write 999,800. One debit is silently lost. **Every transaction "succeeded" and no error was raised**, yet most debits vanished and money was created from nothing. That is the most dangerous kind of bug for a payments company: it does not show up until reconciliation. Under READ COMMITTED, a plain `UPDATE ... SET balance = <value calculated in the app>` is not protected.
+**Analysis.** In the naive version, two clients read the same balance (say 999,900), both subtract 100, and both write 999,800. One debit is silently lost. **pgbench reported 0 failed transactions**, yet 943 of 1,000 debits vanished and NGN 800 was created from nothing. That is the most dangerous kind of bug for a payments company: it does not show up until reconciliation. Under READ COMMITTED, a plain `UPDATE ... SET balance = <value calculated in the app>` is not protected.
 
-The safe version fixes this with **pessimistic row locking**. `FOR UPDATE` makes concurrent transfers on the same wallet queue one behind another, and each one re-reads the committed balance. Correctness costs throughput (about 40% fewer transactions per second in testing) because transfers on a hot wallet are serialised. That is an acceptable trade for money movement. Transfers between *different* wallets still run in parallel, because locks are per row, not per table.
+The safe version fixes this with **pessimistic row locking**. `FOR UPDATE` makes concurrent transfers on the same wallet queue one behind another, and each one re-reads the committed balance. Correctness costs throughput (1,385 vs 3,782 tps, about 63% lower) because every transfer on the same hot wallet must queue for its row lock. That is an acceptable trade for money movement. Transfers between *different* wallets still run in parallel, because locks are per row, not per table.
 
 ## 5. Part C: isolation levels, write conflicts and deadlocks
 
