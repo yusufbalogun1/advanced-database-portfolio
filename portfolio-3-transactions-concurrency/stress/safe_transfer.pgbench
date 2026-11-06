@@ -1,0 +1,2 @@
+-- SAFE transfer: one call to the locking, all-or-nothing p2p_transfer() function.
+SELECT kashlink.p2p_transfer('2348000000001', '2348000000002', 100, 'API');

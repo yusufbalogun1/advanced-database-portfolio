@@ -1,0 +1,10 @@
+-- NAIVE transfer (what a careless application might do):
+-- read both balances, calculate the new values in the app, write them back.
+-- No row locks are taken, so concurrent clients overwrite each other (lost update).
+BEGIN;
+SELECT w.wallet_id AS src, w.balance AS src_bal FROM kashlink.wallet w JOIN kashlink.customer c USING (customer_id) WHERE c.msisdn = '2348000000001' \gset
+SELECT w.wallet_id AS dst, w.balance AS dst_bal FROM kashlink.wallet w JOIN kashlink.customer c USING (customer_id) WHERE c.msisdn = '2348000000002' \gset
+\sleep 2 ms
+UPDATE kashlink.wallet SET balance = :src_bal - 100 WHERE wallet_id = :src;
+UPDATE kashlink.wallet SET balance = :dst_bal + 100 WHERE wallet_id = :dst;
+COMMIT;

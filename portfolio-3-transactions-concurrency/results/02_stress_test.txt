@@ -1,0 +1,70 @@
+
+==================================================================
+ TEST 1 - NAIVE read-modify-write (no locks)
+ 20 concurrent clients x 50 transfers of NGN 100 (Ada -> Bola)
+==================================================================
+number of clients: 20
+number of transactions actually processed: 1000/1000
+number of failed transactions: 0 (0.000%)
+latency average = 5.288 ms
+tps = 3781.804980 (without initial connection time)
+
+-- Expected after 1,000 transfers of NGN 100: Ada 900,000.00 | Bola 1,100,000.00 | Total 2,000,000.00
+ name |  balance   | expected |   error   
+------+------------+----------+-----------
+ Ada  |  994300.00 |   900000 |  94300.00
+ Bola | 1006500.00 |  1100000 | -93500.00
+(2 rows)
+
+ total_ada_plus_bola | money_created_or_lost 
+---------------------+-----------------------
+          2000800.00 |                800.00
+(1 row)
+
+ p2p_txns_recorded 
+-------------------
+                 0
+(1 row)
+
+-- Cached balance vs ledger (expect 0 rows if the run was safe):
+ name | wallet_id | cached_balance | ledger_balance 
+------+-----------+----------------+----------------
+ Ada  |     51017 |      994300.00 |     1000000.00
+ Bola |     51018 |     1006500.00 |     1000000.00
+(2 rows)
+
+
+==================================================================
+ TEST 2 - SAFE p2p_transfer() with SELECT ... FOR UPDATE
+ 20 concurrent clients x 50 transfers of NGN 100 (Ada -> Bola)
+==================================================================
+number of clients: 20
+number of transactions actually processed: 1000/1000
+number of failed transactions: 0 (0.000%)
+latency average = 14.441 ms
+tps = 1384.905362 (without initial connection time)
+
+-- Expected after 1,000 transfers of NGN 100: Ada 900,000.00 | Bola 1,100,000.00 | Total 2,000,000.00
+ name |  balance   | expected | error 
+------+------------+----------+-------
+ Ada  |  900000.00 |   900000 |  0.00
+ Bola | 1100000.00 |  1100000 |  0.00
+(2 rows)
+
+ total_ada_plus_bola | money_created_or_lost 
+---------------------+-----------------------
+          2000000.00 |                  0.00
+(1 row)
+
+ p2p_txns_recorded 
+-------------------
+              1000
+(1 row)
+
+-- Cached balance vs ledger (expect 0 rows if the run was safe):
+ name | wallet_id | cached_balance | ledger_balance 
+------+-----------+----------------+----------------
+(0 rows)
+
+
+Done. Demo wallets reset to NGN 1,000,000 each.

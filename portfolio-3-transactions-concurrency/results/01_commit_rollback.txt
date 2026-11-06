@@ -1,0 +1,186 @@
+SET
+ demo_reset 
+------------
+ 
+(1 row)
+
+== Starting balances ==
+ name  |  balance   | version 
+-------+------------+---------
+ Ada   | 1000000.00 |       0
+ Bola  | 1000000.00 |       0
+ Chidi | 1000000.00 |       0
+ Dayo  | 1000000.00 |       0
+(4 rows)
+
+
+#### DEMO 1 - COMMIT: Ada sends Bola NGN 5,000 ####
+BEGIN
+ txn_id 
+--------
+ 551037
+(1 row)
+
+-- inside the transaction (not yet committed):
+ name |  balance   
+------+------------
+ Ada  |  995000.00
+ Bola | 1005000.00
+(2 rows)
+
+COMMIT
+-- after COMMIT (permanent):
+ name |  balance   
+------+------------
+ Ada  |  995000.00
+ Bola | 1005000.00
+(2 rows)
+
+-- the two ledger rows written by that transaction:
+ txn_id | name | direction | amount  | balance_after 
+--------+------+-----------+---------+---------------
+ 551037 | Ada  | D         | 5000.00 |     995000.00
+ 551037 | Bola | C         | 5000.00 |    1005000.00
+(2 rows)
+
+
+#### DEMO 2 - ROLLBACK: Ada starts sending Bola NGN 7,000, then cancels ####
+BEGIN
+ txn_id 
+--------
+ 551038
+(1 row)
+
+-- inside the transaction, the money appears to have moved:
+ name |  balance   
+------+------------
+ Ada  |  988000.00
+ Bola | 1012000.00
+(2 rows)
+
+ROLLBACK
+-- after ROLLBACK: balances are exactly as after Demo 1, and only Demo 1's txn exists (count = 1):
+ name |  balance   
+------+------------
+ Ada  |  995000.00
+ Bola | 1005000.00
+(2 rows)
+
+ p2p_txns_for_demo_wallets 
+---------------------------
+                         1
+(1 row)
+
+
+#### DEMO 3 - ATOMICITY on failure: credit succeeds, debit fails -> nothing is kept ####
+-- Manual two-step transfer of NGN 2,000,000 from Chidi (who only has 1,000,000) to Dayo.
+-- Step 1 (credit Dayo) succeeds; Step 2 (debit Chidi) breaks CHECK (balance >= 0).
+BEGIN
+UPDATE 1
+ name |  balance   
+------+------------
+ Dayo | 3000000.00
+(1 row)
+
+psql:/portfolio/portfolio-3-transactions-concurrency/01_commit_rollback.sql:54: ERROR:  new row for relation "wallet" violates check constraint "wallet_balance_check"
+DETAIL:  Failing row contains (51019, 50017, null, NGN, -1000000.00, ACTIVE, 0, 2026-11-06 14:36:13.072204+00).
+-- The transaction is now ABORTED: any further statement is refused until ROLLBACK:
+psql:/portfolio/portfolio-3-transactions-concurrency/01_commit_rollback.sql:56: ERROR:  current transaction is aborted, commands ignored until end of transaction block
+ROLLBACK
+-- After ROLLBACK, Dayo did NOT keep the NGN 2,000,000 credit (no money created):
+ name  |  balance   
+-------+------------
+ Chidi | 1000000.00
+ Dayo  | 1000000.00
+(2 rows)
+
+
+#### DEMO 4 - Business-rule rollback inside the transfer function ####
+-- Chidi tries to send NGN 1,500,000 but has NGN 1,000,000:
+psql:/portfolio/portfolio-3-transactions-concurrency/01_commit_rollback.sql:65: ERROR:  Insufficient funds: balance 1000000.00, requested 1500000
+CONTEXT:  PL/pgSQL function p2p_transfer(character varying,character varying,numeric,character varying,uuid) line 38 at RAISE
+-- Nothing was written:
+ name  |  balance   
+-------+------------
+ Chidi | 1000000.00
+ Dayo  | 1000000.00
+(2 rows)
+
+
+#### DEMO 5 - SAVEPOINT: partial rollback inside a batch ####
+-- Chidi sends a batch of 3 payments. Payment 2 goes to a FROZEN wallet and fails;
+-- the savepoint undoes only that payment, the other two are committed.
+UPDATE 1
+BEGIN
+SAVEPOINT
+ payment_1 
+-----------
+    551039
+(1 row)
+
+SAVEPOINT
+psql:/portfolio/portfolio-3-transactions-concurrency/01_commit_rollback.sql:79: ERROR:  Recipient wallet 51018 is FROZEN
+CONTEXT:  PL/pgSQL function p2p_transfer(character varying,character varying,numeric,character varying,uuid) line 35 at RAISE
+ROLLBACK
+SAVEPOINT
+ payment_3 
+-----------
+    551040
+(1 row)
+
+COMMIT
+UPDATE 1
+-- Result: Chidi paid 40,000 in total (10,000 + 30,000); payment 2 was undone:
+ name  |  balance   
+-------+------------
+ Ada   | 1025000.00
+ Bola  | 1005000.00
+ Chidi |  960000.00
+ Dayo  | 1010000.00
+(4 rows)
+
+
+#### DEMO 6 - Idempotency: the app retries the same request after a timeout ####
+ first_attempt 
+---------------
+        551041
+(1 row)
+
+ retry_attempt 
+---------------
+        551041
+(1 row)
+
+psql:/portfolio/portfolio-3-transactions-concurrency/01_commit_rollback.sql:92: NOTICE:  Duplicate request aaaaaaaa-0000-4000-8000-000000000001: returning existing txn 551041
+-- Only ONE transaction exists for that reference, so Dayo was charged once:
+ txn_id |               txn_ref                | amount  | status  
+--------+--------------------------------------+---------+---------
+ 551041 | aaaaaaaa-0000-4000-8000-000000000001 | 2500.00 | SUCCESS
+(1 row)
+
+
+#### DEMO 7 - Optimistic locking with the version column ####
+-- Two support agents open Dayo's wallet at the same time and both see the same version.
+-- Agent 1 freezes the wallet, only if the version is unchanged -> UPDATE 1 (success)
+UPDATE 1
+-- Agent 2 tries to change it based on the now-stale version -> UPDATE 0 (conflict detected)
+UPDATE 0
+ name | status | version 
+------+--------+---------
+ Dayo | FROZEN |       3
+(1 row)
+
+UPDATE 1
+
+#### FINAL CHECKS ####
+-- Total money across the 4 demo wallets must still be NGN 4,000,000 (no money created or lost):
+ total_demo_money 
+------------------
+       4000000.00
+(1 row)
+
+-- Cached balances vs ledger (expect 0 rows):
+ name | wallet_id | cached_balance | ledger_balance 
+------+-----------+----------------+----------------
+(0 rows)
+
