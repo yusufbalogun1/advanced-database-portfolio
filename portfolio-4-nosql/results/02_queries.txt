@@ -1,0 +1,109 @@
+
+==============================================================================
+Q1  KEY-VALUE ACCESS: load a customer's whole profile by phone number (app login)
+==============================================================================
+  name: Fatima Eze | tier 1 | balance NGN 117674.00
+  KYC documents: NIN ✔
+  devices: iPhone 13 (v5.2.3)
+  beneficiaries: Seun, Emeka
+  -> served by the _id primary index: 1 document read, 0 joins
+
+==============================================================================
+Q2  QUERYING POLYMORPHIC NESTED DATA: KYC compliance follow-up lists
+==============================================================================
+  a) Customers with at least one UNVERIFIED KYC document, by country:
+  {"_id":"GH","customers":54}
+  {"_id":"NG","customers":199}
+  {"_id":"UG","customers":28}
+  b) Ghana Card holders whose card EXPIRES before 1 Jan 2027 (a field only Ghana documents have):
+     count = 66
+  {"_id":"233500001404","name":{"first":"Ama"},"kyc":{"documents":[{"expiry":"2026-07-01T00:00:00.000Z"}]}}
+  {"_id":"233500001408","name":{"first":"Akosua"},"kyc":{"documents":[{"expiry":"2026-07-01T00:00:00.000Z"}]}}
+  {"_id":"233500001421","name":{"first":"Kofi"},"kyc":{"documents":[{"expiry":"2026-05-01T00:00:00.000Z"}]}}
+  c) Tier 2+ Nigerians missing a BVN (regulatory gap):
+     count = 49
+
+==============================================================================
+Q3  ARRAY QUERY: Android users on an app version below 5.0 (forced-upgrade campaign)
+==============================================================================
+  count = 706
+  {"_id":"2349000000001","devices":[{"model":"Tecno Spark 10","app_version":"5.0.1"},{"model":"Infinix Hot 30","app_version":"4.8.2"}]}
+  {"_id":"2349000000007","devices":[{"model":"Tecno Spark 10","app_version":"4.8.2"}]}
+  {"_id":"2349000000008","devices":[{"model":"itel A70","app_version":"4.9.0"}]}
+
+==============================================================================
+Q4  AGGREGATION PIPELINE: October 2026 successful volume by country and channel
+==============================================================================
+  {"txns":674,"country":"GH","channel":"APP","value":"3298435.06"}
+  {"txns":622,"country":"GH","channel":"USSD","value":"3157647.72"}
+  {"txns":468,"country":"GH","channel":"AGENT","value":"2419552.83"}
+  {"txns":119,"country":"GH","channel":"API","value":"547816.14"}
+  {"txns":2283,"country":"NG","channel":"APP","value":"13638668.05"}
+  {"txns":2228,"country":"NG","channel":"USSD","value":"11420124.77"}
+  {"txns":1642,"country":"NG","channel":"AGENT","value":"8306254.24"}
+  {"txns":406,"country":"NG","channel":"API","value":"2135906.64"}
+  {"txns":338,"country":"UG","channel":"USSD","value":"1599307.83"}
+  {"txns":295,"country":"UG","channel":"APP","value":"1492243.99"}
+  {"txns":252,"country":"UG","channel":"AGENT","value":"1248099.41"}
+  {"txns":64,"country":"UG","channel":"API","value":"323633.77"}
+
+==============================================================================
+Q5  GEOSPATIAL: app transactions within 5 km of Ikeja, Lagos (2dsphere index)
+==============================================================================
+  count = 398
+  {"ref":"RING-0","amount":"480000.00","channel_meta":{"city":"Lagos","geo":{"coordinates":[3.35,6.6]}}}
+  {"ref":"RING-2","amount":"455000.00","channel_meta":{"city":"Lagos","geo":{"coordinates":[3.35,6.6]}}}
+  {"ref":"RING-4","amount":"440000.00","channel_meta":{"city":"Lagos","geo":{"coordinates":[3.35,6.6]}}}
+
+==============================================================================
+Q6  ATOMIC SINGLE-DOCUMENT UPDATE: debit only if funds are sufficient
+==============================================================================
+  balance before          : 117674.00
+  debit 5,000      -> matched 1, modified 1  (success)
+  debit 99,999,999 -> matched 0, modified 0  (refused: condition false, nothing changed)
+  balance after           : 112674.00
+
+==============================================================================
+Q7  ARRAY UPDATE OPERATORS: register a new phone, keep only the 5 most recent
+==============================================================================
+  modified 1 -> devices now: iPhone 13, Tecno Camon 30
+
+==============================================================================
+Q8  SCHEMA VALIDATION: flexible, but not lawless
+==============================================================================
+  invalid insert REJECTED: Document failed validation
+     - field "_id" failed: regular expression did not match
+     - field "name" failed: 
+     - field "country" failed: value was not found in enum
+     - field "tier" failed: comparison failed
+     - field "wallet" failed: 
+  valid insert with a brand-new optional field "loyalty" ACCEPTED -> no migration needed (acknowledged: true)
+
+==============================================================================
+Q9  GRAPH TRAVERSAL ($graphLookup): trace where money flowed from a flagged account
+==============================================================================
+  hop 1: 2349100000001 -> 2349100000002  480000.00  at 2026-10-28T01:00:00.000Z  (flagged starting transfer)
+  {"hop":2,"from":"2349100000002","to":"2349100000003","amount":"470000.00","at":"2026-10-28T01:11:00.000Z","device":"DEV-SHARED-666"}
+  {"hop":3,"from":"2349100000003","to":"2349100000004","amount":"455000.00","at":"2026-10-28T01:22:00.000Z","device":"DEV-SHARED-666"}
+  {"hop":4,"from":"2349100000004","to":"2349100000005","amount":"440000.00","at":"2026-10-28T01:44:00.000Z","device":"DEV-SHARED-666"}
+  {"hop":5,"from":"2349100000005","to":"2349100000001","amount":"420000.00","at":"2026-10-28T01:55:00.000Z","device":"DEV-SHARED-666"}
+  {"hop":6,"from":"2349100000001","to":"2349100000002","amount":"480000.00","at":"2026-10-28T01:00:00.000Z","device":"DEV-SHARED-666"}
+  -> By hop 5 the money is back at the flagged account, and hop 6 is the original transfer again: a CYCLE.
+     Each hop is ~11 minutes apart, ~3-4% is skimmed per hop, and every transfer uses ONE shared device:
+     classic money-mule ring. Accounts involved:
+  {"_id":"2349100000001","name":{"last":"Account1"},"kyc":{"documents":[{"verified":false}]},"created_at":"2026-10-20T00:00:00.000Z","tags":["new_account"]}
+  {"_id":"2349100000002","name":{"last":"Account2"},"kyc":{"documents":[{"verified":false}]},"created_at":"2026-10-20T00:00:00.000Z","tags":["new_account"]}
+  {"_id":"2349100000003","name":{"last":"Account3"},"kyc":{"documents":[{"verified":false}]},"created_at":"2026-10-20T00:00:00.000Z","tags":["new_account"]}
+  {"_id":"2349100000004","name":{"last":"Account4"},"kyc":{"documents":[{"verified":false}]},"created_at":"2026-10-20T00:00:00.000Z","tags":["new_account"]}
+  {"_id":"2349100000005","name":{"last":"Account5"},"kyc":{"documents":[{"verified":false}]},"created_at":"2026-10-20T00:00:00.000Z","tags":["new_account"]}
+  {"_id":"2349100000006","name":{"last":"Account6"},"kyc":{"documents":[{"verified":false}]},"created_at":"2026-10-20T00:00:00.000Z","tags":["new_account"]}
+
+==============================================================================
+Q10 BUCKET PATTERN: pre-built monthly statements (one read per statement screen)
+==============================================================================
+  statements collection built: 5971 bucket documents (one per customer per month)
+  statement for {"msisdn":"2349000000006","month":"2026-10"}: 6 entries, in 10331.14, out 16465.66
+    2026-10-01T06:44  IN      453.81  Kemi Ibrahim
+    2026-10-06T20:28  OUT    5875.54  Emeka Adeyemi
+    2026-10-19T21:30  OUT    1482.43  Fatima Ibrahim
+    2026-10-24T04:14  IN     6169.71  Yusuf Okafor

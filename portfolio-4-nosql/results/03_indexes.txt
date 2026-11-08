@@ -1,0 +1,40 @@
+Collection sizes: transactions = 30006, customers = 2006
+
+==============================================================================
+E1  Mini-statement: last 10 transfers sent by one customer (newest first)
+==============================================================================
+  BEFORE     plan: SORT <- COLLSCAN
+             returned: 10 | keys examined: 0 | docs examined: 30006 | time: 17 ms
+  AFTER      plan: LIMIT <- FETCH <- IXSCAN(ix_statement)
+             returned: 10 | keys examined: 10 | docs examined: 10 | time: 1 ms
+  Compound index: equality field first, sort field second -> no in-memory SORT, stops after 10.
+
+==============================================================================
+E2  KYC compliance: Ghana Cards expiring before 2027 (MULTIKEY index on an array of sub-documents)
+==============================================================================
+  BEFORE     plan: COLLSCAN
+             returned: 66 | keys examined: 0 | docs examined: 2006 | time: 1 ms
+  AFTER      plan: FETCH <- IXSCAN(ix_kyc_type_expiry)
+             returned: 66 | keys examined: 66 | docs examined: 66 | time: 0 ms
+  MongoDB indexes every element of the documents array (multikey), so one customer can have several
+  index keys. With type first, the scan jumps straight to GHANA_CARD entries and their expiry range.
+
+==============================================================================
+E3  Ops monitor: 20 most recent FAILED transactions (PARTIAL index)
+==============================================================================
+  BEFORE     plan: SORT <- COLLSCAN
+             returned: 20 | keys examined: 0 | docs examined: 30006 | time: 11 ms
+  AFTER      plan: LIMIT <- FETCH <- IXSCAN(ix_failed_recent)
+             returned: 20 | keys examined: 20 | docs examined: 20 | time: 0 ms
+
+==============================================================================
+Index sizes (bytes)
+==============================================================================
+  transactions._id_                        315392
+  transactions.channel_meta.geo_2dsphere   278528
+  transactions.ref_1                       372736
+  transactions.ix_statement                585728
+  transactions.ix_failed_recent            36864
+  customers._id_                           40960
+  customers.ix_kyc_type_expiry             32768
+  The partial index holds only FAILED transactions (~5%), so it is a fraction of the size of a full-collection index such as _id.

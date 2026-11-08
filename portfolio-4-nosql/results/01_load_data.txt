@@ -1,0 +1,195 @@
+Loaded KashLink document model:
+  customers    : 2006
+  transactions : 30006
+  customers with devices field   : 1309
+  customers WITHOUT devices field: 697  (USSD-only users: field simply absent)
+  distinct KYC document types    : ["BVN","GHANA_CARD","NATIONAL_ID","NIN","UTILITY_BILL"]
+
+Sample customer document (Nigeria, with devices):
+{
+  _id: '2349000000001',
+  name: {
+    first: 'Seun',
+    last: 'Eze'
+  },
+  dob: ISODate('1971-07-08T00:00:00.000Z'),
+  country: 'NG',
+  tier: 2,
+  status: 'ACTIVE',
+  wallet: {
+    wallet_no: 'W0000001',
+    currency: 'NGN',
+    balance: Decimal128('692447.00'),
+    limits: {
+      daily: 200000,
+      max_balance: 1000000
+    }
+  },
+  kyc: {
+    documents: [
+      {
+        type: 'NIN',
+        nin: '10000000001',
+        verified: true,
+        verified_at: ISODate('2025-03-25T00:00:00.000Z')
+      },
+      {
+        type: 'BVN',
+        bvn: '22000000001',
+        bank: 'Access',
+        verified: true
+      }
+    ]
+  },
+  preferences: {
+    language: 'en',
+    notifications: {
+      sms: true,
+      push: true
+    }
+  },
+  created_at: ISODate('2025-09-18T00:00:00.000Z'),
+  devices: [
+    {
+      device_id: 'DEV-1-0',
+      os: 'Android',
+      model: 'Tecno Spark 10',
+      app_version: '5.0.1',
+      trusted: true
+    },
+    {
+      device_id: 'DEV-1-1',
+      os: 'Android',
+      model: 'Infinix Hot 30',
+      app_version: '4.8.2',
+      trusted: false
+    }
+  ],
+  beneficiaries: [
+    {
+      msisdn: '2349000000345',
+      nickname: 'Yusuf'
+    },
+    {
+      msisdn: '2349000001015',
+      nickname: 'Tobi'
+    }
+  ]
+}
+
+Sample customer document (Ghana, different KYC shape):
+{
+  _id: '233500001401',
+  name: {
+    first: 'Akosua',
+    last: 'Owusu'
+  },
+  country: 'GH',
+  tier: 2,
+  wallet: {
+    wallet_no: 'W0001401',
+    currency: 'GHS',
+    balance: Decimal128('564663.00'),
+    limits: {
+      daily: 200000,
+      max_balance: 1000000
+    }
+  },
+  kyc: {
+    documents: [
+      {
+        type: 'GHANA_CARD',
+        card_number: 'GHA-700001401-6',
+        expiry: ISODate('2028-03-01T00:00:00.000Z'),
+        verified: false,
+        verified_at: null
+      }
+    ]
+  }
+}
+
+Sample transactions (USSD vs APP vs AGENT: different channel_meta shapes):
+{
+  ref: 'TXN-00000001',
+  type: 'P2P',
+  amount: Decimal128('9516.50'),
+  currency: 'GHS',
+  country: 'GH',
+  status: 'SUCCESS',
+  ts: ISODate('2026-08-01T00:04:24.960Z'),
+  channel: 'USSD',
+  from: {
+    msisdn: '233500001467',
+    name: 'Abena Boateng'
+  },
+  to: {
+    msisdn: '233500001535',
+    name: 'Kwame Boateng'
+  },
+  channel_meta: {
+    short_code: '*565#',
+    session_id: 'S000000001',
+    network: 'Glo'
+  }
+}
+{
+  ref: 'TXN-00000003',
+  type: 'P2P',
+  amount: Decimal128('5739.34'),
+  currency: 'NGN',
+  country: 'NG',
+  status: 'SUCCESS',
+  ts: ISODate('2026-08-01T00:13:14.880Z'),
+  channel: 'APP',
+  from: {
+    msisdn: '2349000000984',
+    name: 'Yusuf Balogun'
+  },
+  to: {
+    msisdn: '2349000000832',
+    name: 'Ngozi Musa'
+  },
+  channel_meta: {
+    device_id: 'DEV-984-0',
+    os: 'Android',
+    app_version: '5.0.1',
+    ip: '102.89.147.247',
+    city: 'Kano',
+    geo: {
+      type: 'Point',
+      coordinates: [
+        8.44806,
+        12.06631
+      ]
+    }
+  }
+}
+{
+  ref: 'TXN-00000002',
+  type: 'CASH_OUT',
+  amount: Decimal128('4101.52'),
+  currency: 'NGN',
+  country: 'NG',
+  status: 'FAILED',
+  ts: ISODate('2026-08-01T00:08:49.920Z'),
+  channel: 'AGENT',
+  from: {
+    msisdn: '2349000000694',
+    name: 'Yusuf Okeke'
+  },
+  channel_meta: {
+    agent_code: 'NG-AG-0218',
+    city: 'Abuja',
+    geo: {
+      type: 'Point',
+      coordinates: [
+        7.39496,
+        9.00516
+      ]
+    }
+  },
+  failure: {
+    code: 'E51',
+    reason: 'Insufficient funds'
+  }
+}
