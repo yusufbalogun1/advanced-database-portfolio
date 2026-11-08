@@ -11,7 +11,7 @@
 | 1 | Database Design and Modelling | [portfolio-1-database-design](portfolio-1-database-design/) | Complete |
 | 2 | Query Processing and Optimisation | [portfolio-2-query-optimisation](portfolio-2-query-optimisation/) | Complete |
 | 3 | Transactions and Concurrency | [portfolio-3-transactions-concurrency](portfolio-3-transactions-concurrency/) | Complete |
-| 4 | NoSQL and Advanced Data Models | portfolio-4-nosql | Pending |
+| 4 | NoSQL and Advanced Data Models | [portfolio-4-nosql](portfolio-4-nosql/) | Complete |
 | 5 | Distributed and Cloud Database | portfolio-5-distributed-cloud | Pending |
 
 ## Technology

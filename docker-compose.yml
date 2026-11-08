@@ -22,6 +22,7 @@ services:
       - "27017:27017"
     volumes:
       - mongodata:/data/db
+      - ./:/portfolio            # lets mongosh inside the container read the .js files
 
 volumes:
   pgdata:
