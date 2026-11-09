@@ -1,0 +1,71 @@
+
+======================================================================
+ STEP 1  Start three MongoDB nodes (mongo1, mongo2, mongo3) and a client container
+======================================================================
+  All three nodes are running.
+
+======================================================================
+ STEP 2  Form the replica set 'klrs' and elect a primary
+======================================================================
+Primary elected: mongo1:27017
+  node            role        transfers  Ada balance  Bola balance
+  --------------  ----------  ---------  -----------  ------------
+  mongo1:27017    PRIMARY             0            -             -
+  mongo2:27017    SECONDARY           0            -             -
+  mongo3:27017    SECONDARY           0            -             -
+
+======================================================================
+ STEP 3  REPLICATION + MULTI-DOCUMENT TRANSACTIONS
+======================================================================
+Inserted 2 wallets with writeConcern {w: "majority"}: acknowledged only after 2 of 3 nodes stored them -> true
+Write accepted by primary: mongo1:27017
+
+Multi-document transactions across two wallet documents + one transfer document:
+  COMMITTED : Ada -> Bola 5000.00 (debit, credit and transfer record saved together)
+  ABORTED   : Ada -> Bola 999999.00 (Insufficient funds in Ada) -> nothing saved
+Balances now: Ada 45000.00, Bola 25000.00, transfers 1
+
+  Every node now holds the same data (asked each node directly):
+  node            role        transfers  Ada balance  Bola balance
+  --------------  ----------  ---------  -----------  ------------
+  mongo1:27017    PRIMARY             1     45000.00      25000.00
+  mongo2:27017    SECONDARY           1     45000.00      25000.00
+  mongo3:27017    SECONDARY           1     45000.00      25000.00
+
+======================================================================
+ STEP 4  AVAILABILITY: stop the PRIMARY and watch automatic failover
+======================================================================
+  Current primary: mongo1:27017 -> stopping container kl-mongo1
+  New primary elected: mongo2:27017  (about 1 seconds after the old primary stopped)
+  WRITE ok   : "written during failover" accepted by primary mongo2:27017 in 165 ms (majority acknowledged)
+  READ ok    : transfers visible = 2 (served by a surviving node; may be slightly stale)
+  node            role        transfers  Ada balance  Bola balance
+  --------------  ----------  ---------  -----------  ------------
+  mongo1:27017    DOWN        (unreachable)
+  mongo2:27017    PRIMARY             2     44900.00      25100.00
+  mongo3:27017    SECONDARY           2     44900.00      25100.00
+
+======================================================================
+ STEP 5  CONSISTENCY over availability: stop a SECOND node (only 1 of 3 left)
+======================================================================
+  Stopping the current primary mongo2:27017 -> container kl-mongo2
+  Trying a majority write and a read with only one node alive:
+  WRITE FAILED: MongoServerSelectionError - getaddrinfo ENOTFOUND mongo1
+  READ ok    : transfers visible = 2 (served by a surviving node; may be slightly stale)
+  node            role        transfers  Ada balance  Bola balance
+  --------------  ----------  ---------  -----------  ------------
+  mongo1:27017    DOWN        (unreachable)
+  mongo2:27017    DOWN        (unreachable)
+  mongo3:27017    SECONDARY           2     44900.00      25100.00
+
+======================================================================
+ STEP 6  RECOVERY: restart the stopped nodes; they rejoin and catch up automatically
+======================================================================
+  node            role        transfers  Ada balance  Bola balance
+  --------------  ----------  ---------  -----------  ------------
+  mongo1:27017    SECONDARY           2     44900.00      25100.00
+  mongo2:27017    SECONDARY           2     44900.00      25100.00
+  mongo3:27017    PRIMARY             2     44900.00      25100.00
+
+  The write made during failover (Step 4) is now on ALL nodes, including the ones that were down.
+  Done. Remove the cluster with: docker compose -f portfolio-5-distributed-cloud/docker-compose.replicaset.yml down
