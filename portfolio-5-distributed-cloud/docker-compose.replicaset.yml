@@ -1,0 +1,21 @@
+# Portfolio 5 - three-node MongoDB replica set (plus a client container)
+# Start/stop is handled by 01_replicaset_demo.sh
+services:
+  mongo1:
+    image: mongo:7
+    container_name: kl-mongo1
+    command: ["mongod", "--replSet", "klrs", "--bind_ip_all"]
+  mongo2:
+    image: mongo:7
+    container_name: kl-mongo2
+    command: ["mongod", "--replSet", "klrs", "--bind_ip_all"]
+  mongo3:
+    image: mongo:7
+    container_name: kl-mongo3
+    command: ["mongod", "--replSet", "klrs", "--bind_ip_all"]
+  client:                       # stays up while database nodes are stopped, to run mongosh
+    image: mongo:7
+    container_name: kl-client
+    command: ["sleep", "infinity"]
+    volumes:
+      - ./:/p5
